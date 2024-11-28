@@ -2,8 +2,7 @@
 name: Deploy release artifacts
 on:
   push:
-    tags:
-      - '*'
+    branches: [ 'retrigger-ci-wheels' ]
 jobs:
   build-core:
     name: Build core
