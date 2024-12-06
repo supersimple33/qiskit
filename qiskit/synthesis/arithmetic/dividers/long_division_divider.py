@@ -110,16 +110,23 @@ def cmpr(N: int):
     j = 1
 
     # 4: controlled xor
-    for i in range(N - 1, 0, -1):
+    for i in range(1, N):
         circuit.x(qr_a[i])
         circuit.ccx(qr_aux[not j], qr_a[i], qr_aux[j])
         circuit.x(qr_a[i])
         circuit.cx(qr_b[i], qr_aux[j])
         j = not j
 
+    # uncompute the ancilla
+    circuit.ccx(qr_a[0], qr_b[0], qr_aux[j])
+
     # 4: UnComputer xor
     for i in range(N):
         circuit.cx(qr_b[i], qr_a[i])
+
+    # always have last qubit as output
+    if j:
+        circuit.swap(qr_aux[0], qr_aux[1])
 
     return circuit
 
