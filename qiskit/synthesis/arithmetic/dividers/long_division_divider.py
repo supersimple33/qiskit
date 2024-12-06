@@ -104,29 +104,34 @@ def cmpr(N: int):
     for i in range(N):
         circuit.cx(qr_b[i], qr_a[i])
 
-    # 3: start ancilla
-    circuit.ccx(qr_a[0], qr_b[0], qr_aux[0])
     circuit.cx(qr_b[1], qr_aux[0])
-    j = 1
+    for i in range(2, N):
+        circuit.cx(qr_b[i], qr_b[i - 1])
 
-    # 4: controlled xor
-    for i in range(1, N):
-        circuit.x(qr_a[i])
-        circuit.ccx(qr_aux[not j], qr_a[i], qr_aux[j])
-        circuit.x(qr_a[i])
-        circuit.cx(qr_b[i], qr_aux[j])
-        j = not j
+    circuit.ccx(qr_a[0], qr_b[0], qr_aux[0])
 
-    # uncompute the ancilla
-    circuit.ccx(qr_a[0], qr_b[0], qr_aux[j])
+    circuit.ccx(qr_aux[0], qr_a[1], qr_b[1], ctrl_state="01")
 
-    # 4: UnComputer xor
+    for i in range(2, N - 1):
+        circuit.ccx(qr_b[i - 1], qr_a[i], qr_b[i], ctrl_state="01")
+
+    circuit.cx(qr_b[N - 1], qr_aux[1])
+    circuit.ccx(qr_b[N - 2], qr_a[N - 1], qr_aux[1], ctrl_state="01")
+
+    for i in range(N - 2, 1, -1):
+        circuit.ccx(qr_b[i - 1], qr_a[i], qr_b[i], ctrl_state="01")
+
+    circuit.ccx(qr_aux[0], qr_a[1], qr_b[1], ctrl_state="01")
+
+    circuit.ccx(qr_a[0], qr_b[0], qr_aux[0])
+
+    for i in range(2, N):
+        circuit.cx(qr_b[i], qr_b[i - 1])
+
+    circuit.cx(qr_b[1], qr_aux[0])
+
     for i in range(N):
         circuit.cx(qr_b[i], qr_a[i])
-
-    # always have last qubit as output
-    if j:
-        circuit.swap(qr_aux[0], qr_aux[1])
 
     return circuit
 
