@@ -19,15 +19,16 @@ from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.circuit.quantumregister import QuantumRegister
 
 
-def ctrl_eql_sbt(N: int) -> QuantumCircuit:
+def ctrl_eql_sbt(N: int) -> QuantumCircuit:  # B = B - A
     qr_a = QuantumRegister(N, "a")
     qr_b = QuantumRegister(N, "b")
     qr_c = QuantumRegister(1, "c")
-    circuit = QuantumCircuit(qr_a, qr_b, qr_c)
+    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_eql_sbt_{N}")
 
     # Invert the a qubits
     for i in range(N):
         circuit.cx(qr_c[0], qr_a[i])
+        # circuit.cx(qr_c[0], qr_b[i])
 
     # 3: Calculate the binary add of a and b
     for i in range(N - 1, 0, -1):
@@ -42,25 +43,25 @@ def ctrl_eql_sbt(N: int) -> QuantumCircuit:
         circuit.ccx(qr_c[0], qr_a[i], qr_b[i])
         circuit.ccx(qr_a[i - 1], qr_b[i - 1], qr_a[i])
 
-    # circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
+    circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
 
     # Undo 3:
-    for i in range(1, num_state_qubits):
+    for i in range(1, N):
         circuit.cx(qr_a[i], qr_b[i])
 
     # Invert all the qubits
-    for i in range(num_state_qubits):
+    for i in range(N):
         circuit.cx(qr_c[0], qr_a[i])
         circuit.cx(qr_c[0], qr_b[i])
 
     return circuit
 
 
-def ctrl_uneql_sbt(N: int, M: int):
+def ctrl_uneql_sbt(N: int, M: int):  # B = B - A
     qr_a = QuantumRegister(N, "a")
     qr_b = QuantumRegister(N, "b")
     qr_c = QuantumRegister(1, "c")
-    circuit = QuantumCircuit(qr_a, qr_b, qr_c)
+    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_uneql_sbt_{N}_{M}")
 
     # Invert the a qubits
     for i in range(N):
@@ -80,6 +81,8 @@ def ctrl_uneql_sbt(N: int, M: int):
         # if i <= M:
         circuit.ccx(qr_a[i - 1], qr_b[i - 1], qr_a[i])
 
+    circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
+
     # Undo 3:
     for i in range(1, M):
         circuit.cx(qr_a[i], qr_b[i])
@@ -96,7 +99,7 @@ def cmpr(N: int):
     qr_a = QuantumRegister(N, "a")
     qr_b = QuantumRegister(N, "b")
     qr_aux = QuantumRegister(2, "aux")
-    circuit = QuantumCircuit(qr_a, qr_b, qr_aux)
+    circuit = QuantumCircuit(qr_a, qr_b, qr_aux, name=f"cmpr_{N}")
 
     # 1: Prepare the aux
 
