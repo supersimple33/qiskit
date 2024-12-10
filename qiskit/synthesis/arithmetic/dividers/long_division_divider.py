@@ -27,12 +27,15 @@ def ctrl_eql_sbt(N: int) -> QuantumCircuit:  # B = B - A
 
     # Invert the a qubits
     for i in range(N):
-        circuit.cx(qr_c[0], qr_a[i])
-        # circuit.cx(qr_c[0], qr_b[i])
+        circuit.cx(qr_c[0], qr_b[i])
 
     # 3: Calculate the binary add of a and b
     for i in range(N - 1, 0, -1):
         circuit.cx(qr_a[i], qr_b[i])
+
+    # 3b: step
+    for i in range(N - 2, 0, -1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
 
     # 4: shift ups
     for i in range(N - 1):
@@ -45,13 +48,16 @@ def ctrl_eql_sbt(N: int) -> QuantumCircuit:  # B = B - A
 
     circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
 
-    # Undo 3:
+    # Undo 3b:
+    for i in range(1, N - 1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
+
+    # Undo 3a:
     for i in range(1, N):
         circuit.cx(qr_a[i], qr_b[i])
 
     # Invert all the qubits
     for i in range(N):
-        circuit.cx(qr_c[0], qr_a[i])
         circuit.cx(qr_c[0], qr_b[i])
 
     return circuit
