@@ -19,11 +19,11 @@ from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.circuit.quantumregister import QuantumRegister
 
 
-def ctrl_eql_sbt(N: int) -> QuantumCircuit:  # B = B - A
+def ctrl_sbt(N: int) -> QuantumCircuit:  # B = B - A
     qr_a = QuantumRegister(N, "a")
     qr_b = QuantumRegister(N, "b")
     qr_c = QuantumRegister(1, "c")
-    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_eql_sbt_{N}")
+    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_sbt_{N}")
 
     # Invert the a qubits
     for i in range(N):
@@ -63,42 +63,52 @@ def ctrl_eql_sbt(N: int) -> QuantumCircuit:  # B = B - A
     return circuit
 
 
-def ctrl_uneql_sbt(N: int, M: int):  # B = B - A
-    qr_a = QuantumRegister(N, "a")
-    qr_b = QuantumRegister(N, "b")
-    qr_c = QuantumRegister(1, "c")
-    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_uneql_sbt_{N}_{M}")
+# def ctrl_uneql_sbt(N: int):  # B = B - A A
+#     qr_a = QuantumRegister(N, "a")
+#     qr_b = QuantumRegister(N, "b")
+#     qr_c = QuantumRegister(1, "c")
+#     circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_uneql_sbt_{N}_{N+1}")
 
-    # Invert the a qubits
-    for i in range(N):
-        circuit.cx(qr_c[0], qr_a[i])
+#     # Invert the a qubits
+#     for i in range(N):
+#         if i == N - 1:
+#             continue
+#         circuit.cx(qr_c[0], qr_b[i])
 
-    # 3: Calculate the binary add of a and b
-    for i in range(M - 1, 0, -1):
-        circuit.cx(qr_a[i], qr_b[i])
+#     # 3: Calculate the binary add of a and b
+#     for i in range(N - 1, 0, -1):
+#         if i == N - 1:
+#             continue
+#         circuit.cx(qr_a[i], qr_b[i])
 
-    # 4: shift ups
-    for i in range(N - 1):
-        circuit.ccx(qr_a[i], qr_b[i], qr_a[i + 1])
+#     # 3b: step
+#     for i in range(N - 2, 0, -1):
+#         circuit.cx(qr_a[i], qr_a[i + 1])
 
-    # 5: controlled sub
-    for i in range(N - 1, 0, -1):
-        circuit.ccx(qr_c[0], qr_a[i], qr_b[i])
-        # if i <= M:
-        circuit.ccx(qr_a[i - 1], qr_b[i - 1], qr_a[i])
+#     # 4: shift ups
+#     for i in range(N - 1):
+#         circuit.ccx(qr_a[i], qr_b[i], qr_a[i + 1])
 
-    circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
+#     # 5: controlled sub
+#     for i in range(N - 1, 0, -1):
+#         circuit.ccx(qr_c[0], qr_a[i], qr_b[i])
+#         circuit.ccx(qr_a[i - 1], qr_b[i - 1], qr_a[i])
 
-    # Undo 3:
-    for i in range(1, M):
-        circuit.cx(qr_a[i], qr_b[i])
+#     circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
 
-    # Invert all the qubits
-    for i in range(N):
-        circuit.cx(qr_c[0], qr_a[i])
-        circuit.cx(qr_c[0], qr_b[i])
+#     # Undo 3b:
+#     for i in range(1, N - 1):
+#         circuit.cx(qr_a[i], qr_a[i + 1])
 
-    return circuit
+#     # Undo 3a:
+#     for i in range(1, N):
+#         circuit.cx(qr_a[i], qr_b[i])
+
+#     # Invert all the qubits
+#     for i in range(N):
+#         circuit.cx(qr_c[0], qr_b[i])
+
+#     return circuit
 
 
 def cmpr(N: int):
@@ -113,30 +123,32 @@ def cmpr(N: int):
     for i in range(N):
         circuit.cx(qr_b[i], qr_a[i])
 
+    # cnots going up
     circuit.cx(qr_b[1], qr_aux[0])
     for i in range(2, N):
         circuit.cx(qr_b[i], qr_b[i - 1])
+    circuit.cx(qr_b[N - 1], qr_aux[1])
 
     circuit.ccx(qr_a[0], qr_b[0], qr_aux[0])
+    for i in range(1, N):
+        circuit.ccx(
+            qr_b[i - 1] if i != 1 else qr_aux[0],
+            qr_a[i],
+            qr_b[i] if i != N - 1 else qr_aux[1],
+            ctrl_state="01",
+        )
 
-    circuit.ccx(qr_aux[0], qr_a[1], qr_b[1], ctrl_state="01")
-
-    for i in range(2, N - 1):
-        circuit.ccx(qr_b[i - 1], qr_a[i], qr_b[i], ctrl_state="01")
-
-    circuit.cx(qr_b[N - 1], qr_aux[1])
-    circuit.ccx(qr_b[N - 2], qr_a[N - 1], qr_aux[1], ctrl_state="01")
-
-    for i in range(N - 2, 1, -1):
-        circuit.ccx(qr_b[i - 1], qr_a[i], qr_b[i], ctrl_state="01")
-
-    circuit.ccx(qr_aux[0], qr_a[1], qr_b[1], ctrl_state="01")
-
+    for i in range(1, N - 1):
+        circuit.ccx(
+            qr_b[i - 1] if i != 1 else qr_aux[0],
+            qr_a[i],
+            qr_b[i] if i != N - 1 else qr_aux[1],
+            ctrl_state="01",
+        )
     circuit.ccx(qr_a[0], qr_b[0], qr_aux[0])
 
     for i in range(2, N):
         circuit.cx(qr_b[i], qr_b[i - 1])
-
     circuit.cx(qr_b[1], qr_aux[0])
 
     for i in range(N):
@@ -194,14 +206,60 @@ def long_division_divider(
     qr_d = QuantumRegister(num_dividend_qubits, "d")
     qr_q = QuantumRegister(num_divisor_qubits, "q")
     qr_s = QuantumRegister(num_dividend_qubits - num_divisor_qubits + 1, "s")
+    qr_aux = QuantumRegister(3, "aux")  # N
 
     # build the division circuit
-    circuit = QuantumCircuit(qr_d, qr_q, qr_s)
+    circuit = QuantumCircuit(qr_d, qr_q, qr_s, qr_aux)
 
     # prepare comparators and subtractors
-    from qiskit.circuit.library.arithmetic import IntegerComparator
+    # from qiskit.circuit.library.arithmetic import IntegerComparator
 
-    comparator = IntegerComparator(num_divisor_qubits)
+    comparator = cmpr(num_divisor_qubits)
+    sub_eql = ctrl_sbt(num_divisor_qubits)
+    sub_uneql = ctrl_sbt(num_divisor_qubits + 1)
 
     for i in range(num_dividend_qubits - num_divisor_qubits + 1):
-        pass
+        # print(len(qr_d[num_dividend_qubits - num_divisor_qubits - i : num_dividend_qubits - i]))
+        circuit.append(
+            comparator,
+            qr_d[num_dividend_qubits - num_divisor_qubits - i : num_dividend_qubits - i]
+            + qr_q[:]
+            + qr_aux[:2],
+        )
+        circuit.x(qr_aux[1])
+        circuit.cx(qr_aux[1], qr_s[num_dividend_qubits - num_divisor_qubits - i])  #  CTRL STATE
+
+        if i == num_dividend_qubits - num_divisor_qubits:
+            break
+
+        circuit.append(
+            sub_eql,
+            qr_q[:]
+            + qr_d[num_dividend_qubits - num_divisor_qubits - i : num_dividend_qubits - i]
+            + [qr_aux[1]],
+        )
+        circuit.x(qr_aux[1])
+
+        circuit.ccx(qr_d[num_dividend_qubits - 1 - i], qr_aux[1], qr_aux[0])
+        # print(len(qr_d[num_dividend_qubits - num_divisor_qubits - i - 1 : num_dividend_qubits - i]))
+
+        circuit.cx(
+            qr_d[num_dividend_qubits - 1 - i],
+            qr_s[num_dividend_qubits - num_divisor_qubits - i - 1],
+        )
+
+        print(len(qr_d[num_dividend_qubits - num_divisor_qubits - i - 1 : num_dividend_qubits - i]))
+        circuit.append(
+            sub_uneql,
+            (
+                qr_q[:]
+                + [qr_aux[2]]
+                + qr_d[num_dividend_qubits - num_divisor_qubits - i - 1 : num_dividend_qubits - i]
+                + [qr_aux[0]]
+            ),
+        )
+
+        circuit.reset(qr_aux[:2])
+
+    circuit.x(qr_aux[1])
+    return circuit
