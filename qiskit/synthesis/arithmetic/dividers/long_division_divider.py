@@ -17,17 +17,105 @@ from __future__ import annotations
 import numpy as np
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.circuit.quantumregister import QuantumRegister
+from qiskit.circuit.library import ModularAdderGate
 
 
-def ctrl_sbt(N: int) -> QuantumCircuit:  # B = B - A
+def alt_adder(N: int) -> QuantumCircuit:
+    """Ripple carry adder circuit.
+
+    Thapliyal, H., & Ranganathan, N. (2013). Design of efficient reversible logic-based binary and BCD adder circuits. ACM Journal on Emerging Technologies in Computing Systems (JETC), 9(3), 1-31.
+    """
+
+    qr_a = QuantumRegister(N, "a")
+    qr_b = QuantumRegister(N, "b")
+    circuit = QuantumCircuit(qr_a, qr_b, name=f"ctrl_sbt_{N}")
+
+    # Step 1
+    for i in range(1, N):
+        circuit.cx(qr_a[i], qr_b[i])
+
+    # Step 2
+    for i in range(N - 2, 0, -1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
+
+    # Step 3
+    for i in range(N - 1):
+        circuit.ccx(qr_a[i], qr_b[i], qr_a[i + 1])
+
+    # Step 4
+    # circuit.cx(qr_a[N - 2], qr_b[N - 2])
+    for i in range(N - 2, -1, -1):
+        circuit.ccx(qr_a[i], qr_b[i], qr_a[i + 1])
+        circuit.cx(qr_a[i], qr_b[i])
+
+    # Step 5
+    for i in range(1, N - 1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
+
+    for i in range(1, N):
+        circuit.cx(qr_a[i], qr_b[i])
+
+    return circuit
+
+
+def adder(N: int) -> QuantumCircuit:
+    """Ripple carry adder circuit."""
+
+    qr_a = QuantumRegister(N, "a")
+    qr_b = QuantumRegister(N, "b")
+    circuit = QuantumCircuit(qr_a, qr_b, name=f"add_{N}")
+
+    # # Invert the a qubits # FOR SUBTRACTION
+    # for i in range(N):
+    #     circuit.cx(qr_c[0], qr_b[i])
+
+    # 3: Calculate the binary add of a and b
+    for i in range(N - 1, 0, -1):
+        circuit.cx(qr_a[i], qr_b[i])
+
+    # 3b: step
+    for i in range(N - 2, 0, -1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
+
+    # 4: shift ups
+    for i in range(N - 1):
+        circuit.ccx(qr_a[i], qr_b[i], qr_a[i + 1])
+
+    # 5: controlled sub
+    for i in range(N - 1, 0, -1):
+        circuit.cx(qr_a[i], qr_b[i])
+        circuit.ccx(qr_a[i - 1], qr_b[i - 1], qr_a[i])
+
+    circuit.cx(qr_a[0], qr_b[0])
+
+    # Undo 3b:
+    for i in range(1, N - 1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
+
+    # Undo 3a:
+    for i in range(1, N):
+        circuit.cx(qr_a[i], qr_b[i])
+
+    # FOR SUBTRACTION
+    # for i in range(N):
+    #     circuit.cx(qr_c[0], qr_b[i])
+
+    return circuit
+
+
+def ctrl_add(N: int) -> QuantumCircuit:
+    """Controlled Adder circuit.
+
+    Muñoz-Coreas, E., & Thapliyal, H. (2017). T-count optimized design of quantum integer multiplication. arXiv preprint arXiv:1706.05113.
+    """
     qr_a = QuantumRegister(N, "a")
     qr_b = QuantumRegister(N, "b")
     qr_c = QuantumRegister(1, "c")
-    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_sbt_{N}")
+    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_add_{N}")
 
-    # Invert the a qubits
-    for i in range(N):
-        circuit.cx(qr_c[0], qr_b[i])
+    # # Invert the a qubits # FOR SUBTRACTION
+    # for i in range(N):
+    #     circuit.cx(qr_c[0], qr_b[i])
 
     # 3: Calculate the binary add of a and b
     for i in range(N - 1, 0, -1):
@@ -56,59 +144,11 @@ def ctrl_sbt(N: int) -> QuantumCircuit:  # B = B - A
     for i in range(1, N):
         circuit.cx(qr_a[i], qr_b[i])
 
-    # Invert all the qubits
-    for i in range(N):
-        circuit.cx(qr_c[0], qr_b[i])
+    # FOR SUBTRACTION
+    # for i in range(N):
+    #     circuit.cx(qr_c[0], qr_b[i])
 
     return circuit
-
-
-# def ctrl_uneql_sbt(N: int):  # B = B - A A
-#     qr_a = QuantumRegister(N, "a")
-#     qr_b = QuantumRegister(N, "b")
-#     qr_c = QuantumRegister(1, "c")
-#     circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_uneql_sbt_{N}_{N+1}")
-
-#     # Invert the a qubits
-#     for i in range(N):
-#         if i == N - 1:
-#             continue
-#         circuit.cx(qr_c[0], qr_b[i])
-
-#     # 3: Calculate the binary add of a and b
-#     for i in range(N - 1, 0, -1):
-#         if i == N - 1:
-#             continue
-#         circuit.cx(qr_a[i], qr_b[i])
-
-#     # 3b: step
-#     for i in range(N - 2, 0, -1):
-#         circuit.cx(qr_a[i], qr_a[i + 1])
-
-#     # 4: shift ups
-#     for i in range(N - 1):
-#         circuit.ccx(qr_a[i], qr_b[i], qr_a[i + 1])
-
-#     # 5: controlled sub
-#     for i in range(N - 1, 0, -1):
-#         circuit.ccx(qr_c[0], qr_a[i], qr_b[i])
-#         circuit.ccx(qr_a[i - 1], qr_b[i - 1], qr_a[i])
-
-#     circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
-
-#     # Undo 3b:
-#     for i in range(1, N - 1):
-#         circuit.cx(qr_a[i], qr_a[i + 1])
-
-#     # Undo 3a:
-#     for i in range(1, N):
-#         circuit.cx(qr_a[i], qr_b[i])
-
-#     # Invert all the qubits
-#     for i in range(N):
-#         circuit.cx(qr_c[0], qr_b[i])
-
-#     return circuit
 
 
 def cmpr(N: int):
@@ -157,7 +197,89 @@ def cmpr(N: int):
     return circuit
 
 
-def long_division_divider(
+def long_division_divider(N: int) -> QuantumCircuit:
+    r"""A long division divider circuit to compute the quotient and remainder of two qubit registers.
+
+    Division in this circuit is implemented using the procedure of Table. 1 in [1], where
+    the long division method is implemented using comparators and subtractors.
+
+
+    weighted sum rotations are implemented as given in Fig. 5 in [1]. QFT is used on the output
+    register and is followed by rotations controlled by input registers. The rotations
+    transform the state into the product of two input registers in QFT base, which is
+    reverted from QFT base using inverse QFT.
+    For example, on 4 qubit dividend and 2 qubit divisor, a full divider is given by:
+
+    .. plot::
+        :include-source:
+
+        from qiskit.synthesis.arithmetic import long_division_divider
+
+    Args:
+        num_dividend_qubits: The number of qubits in the dividend register for
+            state :math:`|d\rangle`.
+        num_divisor_qubits: The number of qubits in the divisor register for
+                        state :math:`|q\rangle`. Default value is ``num_dividend_qubits``
+                        to keep divisor and dividend registers equal in size.
+
+    Raises:
+        ValueError: If ``num_divisor_qubits`` is given and not valid, meaning it is
+            greater than ``num_dividend_qubits``.
+
+    **References:**
+
+    [1] Thapliyal, Himanshu et al. “Quantum Circuit Designs of Integer Division Optimizing T-count and T-depth.”
+    IEEE Transactions on Emerging Topics in Computing 9 (2018): 1045-1056.
+
+    """
+
+    qr_a = QuantumRegister(N, "a")  # qr_q
+    qr_b = QuantumRegister(N, "b")
+    qr_r = QuantumRegister(N, "r")
+
+    circuit = QuantumCircuit(qr_a, qr_b, qr_r)
+
+    add = adder(N)
+    cadd = ctrl_add(N)
+
+    for i in range(1, N):
+        # 1: Prepare the Y register
+        # 1.1 Create the Y register
+        Y = qr_a[N - i :] + qr_r[: N - i]
+        print(len(Y))
+
+        # 1.2 Subtract off b from Y
+        circuit.x(Y)
+        circuit.append(add, qr_b[:] + Y)
+        circuit.x(Y)
+
+        # 2: prepare r_n-i for use
+        circuit.cx(Y[N - 1], qr_r[N - i])
+
+        # 3: Controlled add
+        circuit.append(cadd, qr_b[:] + Y[:] + [qr_r[N - i]])
+
+        # 4: apply not gate
+        circuit.x(qr_r[N - i])
+
+    # 1: Subtraction
+    circuit.x(qr_a)
+    circuit.append(add, qr_b[:] + qr_a[:])
+    circuit.x(qr_a)
+
+    # 2: setup r_0
+    circuit.cx(qr_a[N - 1], qr_r[0])
+
+    # 3: Controlled add
+    circuit.append(cadd, qr_b[:] + qr_a[:] + [qr_r[0]])
+
+    # 4: final not gate
+    circuit.x(qr_r[0])
+
+    return circuit
+
+
+def other_divider(
     num_dividend_qubits: int,
     num_divisor_qubits: int | None = None,
 ) -> QuantumCircuit:
@@ -229,8 +351,8 @@ def long_division_divider(
         circuit.x(qr_aux[1])
         circuit.cx(qr_aux[1], qr_s[num_dividend_qubits - num_divisor_qubits - i])  #  CTRL STATE
 
-        if i == num_dividend_qubits - num_divisor_qubits:
-            break
+        # if i == num_dividend_qubits - num_divisor_qubits:
+        #     break
 
         circuit.append(
             sub_eql,
@@ -247,6 +369,9 @@ def long_division_divider(
             qr_d[num_dividend_qubits - 1 - i],
             qr_s[num_dividend_qubits - num_divisor_qubits - i - 1],
         )
+
+        if i == num_dividend_qubits - num_divisor_qubits:
+            break
 
         print(len(qr_d[num_dividend_qubits - num_divisor_qubits - i - 1 : num_dividend_qubits - i]))
         circuit.append(
