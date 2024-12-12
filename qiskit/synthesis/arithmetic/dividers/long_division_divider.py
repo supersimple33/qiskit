@@ -151,6 +151,54 @@ def ctrl_add(N: int) -> QuantumCircuit:
     return circuit
 
 
+def ctrl_sbt(N: int) -> QuantumCircuit:
+    """Controlled Adder circuit.
+
+    Muñoz-Coreas, E., & Thapliyal, H. (2017). T-count optimized design of quantum integer multiplication. arXiv preprint arXiv:1706.05113.
+    """
+    qr_a = QuantumRegister(N, "a")
+    qr_b = QuantumRegister(N, "b")
+    qr_c = QuantumRegister(1, "c")
+    circuit = QuantumCircuit(qr_a, qr_b, qr_c, name=f"ctrl_sub_{N}")
+
+    # # Invert the a qubits # FOR SUBTRACTION
+    for i in range(N):
+        circuit.cx(qr_c[0], qr_b[i])
+
+    # 3: Calculate the binary add of a and b
+    for i in range(N - 1, 0, -1):
+        circuit.cx(qr_a[i], qr_b[i])
+
+    # 3b: step
+    for i in range(N - 2, 0, -1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
+
+    # 4: shift ups
+    for i in range(N - 1):
+        circuit.ccx(qr_a[i], qr_b[i], qr_a[i + 1])
+
+    # 5: controlled sub
+    for i in range(N - 1, 0, -1):
+        circuit.ccx(qr_c[0], qr_a[i], qr_b[i])
+        circuit.ccx(qr_a[i - 1], qr_b[i - 1], qr_a[i])
+
+    circuit.ccx(qr_c[0], qr_a[0], qr_b[0])
+
+    # Undo 3b:
+    for i in range(1, N - 1):
+        circuit.cx(qr_a[i], qr_a[i + 1])
+
+    # Undo 3a:
+    for i in range(1, N):
+        circuit.cx(qr_a[i], qr_b[i])
+
+    # FOR SUBTRACTION
+    for i in range(N):
+        circuit.cx(qr_c[0], qr_b[i])
+
+    return circuit
+
+
 def cmpr(N: int):
     qr_a = QuantumRegister(N, "a")
     qr_b = QuantumRegister(N, "b")
@@ -382,7 +430,7 @@ def other_divider(
         if i == num_dividend_qubits - num_divisor_qubits:
             break
 
-        print(len(qr_d[num_dividend_qubits - num_divisor_qubits - i - 1 : num_dividend_qubits - i]))
+        # print(len(qr_d[num_dividend_qubits - num_divisor_qubits - i - 1 : num_dividend_qubits - i]))
         circuit.append(
             sub_uneql,
             (
