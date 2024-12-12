@@ -17,7 +17,7 @@ from __future__ import annotations
 import numpy as np
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.circuit.quantumregister import QuantumRegister
-from qiskit.circuit.library import ModularAdderGate
+from qiskit.circuit.library import DraperQFTAdder
 
 
 def alt_adder(N: int) -> QuantumCircuit:
@@ -59,7 +59,7 @@ def alt_adder(N: int) -> QuantumCircuit:
 
 
 def adder(N: int) -> QuantumCircuit:
-    """Ripple carry adder circuit."""
+    """Ripple carry adder circuit. Based on the control adder without a control."""
 
     qr_a = QuantumRegister(N, "a")
     qr_b = QuantumRegister(N, "b")
@@ -197,7 +197,7 @@ def cmpr(N: int):
     return circuit
 
 
-def long_division_divider(N: int) -> QuantumCircuit:
+def long_division_divider(N: int, draper=False) -> QuantumCircuit:
     r"""A long division divider circuit to compute the quotient and remainder of two qubit registers.
 
     Division in this circuit is implemented using the procedure of Table. 1 in [1], where
@@ -241,6 +241,9 @@ def long_division_divider(N: int) -> QuantumCircuit:
 
     add = adder(N)
     cadd = ctrl_add(N)
+    if draper:
+        add = DraperQFTAdder(N, kind="fixed")
+        cadd = DraperQFTAdder(N, kind="fixed").control()
 
     for i in range(1, N):
         # 1: Prepare the Y register
@@ -257,7 +260,10 @@ def long_division_divider(N: int) -> QuantumCircuit:
         circuit.cx(Y[N - 1], qr_r[N - i])
 
         # 3: Controlled add
-        circuit.append(cadd, qr_b[:] + Y[:] + [qr_r[N - i]])
+        if draper:
+            circuit.append(cadd, [qr_r[N - i]] + qr_b[:] + Y[:])
+        else:
+            circuit.append(cadd, qr_b[:] + Y[:] + [qr_r[N - i]])
 
         # 4: apply not gate
         circuit.x(qr_r[N - i])
@@ -271,7 +277,10 @@ def long_division_divider(N: int) -> QuantumCircuit:
     circuit.cx(qr_a[N - 1], qr_r[0])
 
     # 3: Controlled add
-    circuit.append(cadd, qr_b[:] + qr_a[:] + [qr_r[0]])
+    if draper:
+        circuit.append(cadd, [qr_r[0]] + qr_b[:] + qr_a[:])
+    else:
+        circuit.append(cadd, qr_b[:] + qr_a[:] + [qr_r[0]])
 
     # 4: final not gate
     circuit.x(qr_r[0])
