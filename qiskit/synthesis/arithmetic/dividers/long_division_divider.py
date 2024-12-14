@@ -297,7 +297,6 @@ def long_division_divider(N: int, draper=False) -> QuantumCircuit:
         # 1: Prepare the Y register
         # 1.1 Create the Y register
         Y = qr_a[N - i :] + qr_r[: N - i]
-        print(len(Y))
 
         # 1.2 Subtract off b from Y
         circuit.x(Y)
